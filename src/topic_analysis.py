@@ -1,0 +1,80 @@
+import re
+
+DEFAULT_STOP_WORDS = {
+    "a", "an", "the", "and", "or", "but", "for", "from",
+    "in", "into", "of", "on", "to", "with", "by", "at",
+    "as", "is", "are", "be", "this", "that", "these",
+    "those", "your", "you", "my", "we", "it", "how", "what",
+}
+
+def extract_keywords(video: dict, stop_words: set = DEFAULT_STOP_WORDS)->set:
+    """Extracts normalized, unique keywords from a video's title, description, and tags.
+    Handles missing tags (null or empty) safely."""
+    
+    title = video.get("title", "")
+    description = video.get("description", "")
+    raw_tags = video.get("tags")
+    tags_text = " ".join(raw_tags) if raw_tags and isinstance(raw_tags, list) else ""
+    
+    text = f"{title} {description} {tags_text}"
+    words = re.findall(r"[a-z0-9]+", text.lower())
+    return {word for word in words if word not in stop_words}
+
+def jaccard_similarity(set1, set2):
+    """Calculates Jaccard similarity between two sets.
+    J(A, B) = |A ∩ B| / |A ∪ B|"""
+    if not set1 and not set2:
+        return 0.0
+    intersection = len(set1.intersection(set2))
+    union = len(set1.union(set2))
+    return intersection / union
+
+def score_candidate_pairwise(candidate: dict, playlist_videos: list, top_n: int = 3):
+    """Compares a candidate video against each video in the playlist individually. Returns the average Jaccard score of the top-N closest matches
+    along with matched details."""
+    cand_keywords = extract_keywords(candidate)
+    pairwise_matches = []
+    for p_vid in playlist_videos:
+        p_keywords = extract_keywords(p_vid)
+        score = jaccard_similarity(cand_keywords, p_keywords)
+        pairwise_matches.append({
+            "playlist_video_id" : p_vid.get("video_id"),
+            "playlist_title" : p_vid.get("title"),
+            "score" : score,
+            "shared_words" : cand_keywords.intersection(p_keywords)})
+    pairwise_matches.sort(key=lambda x: x["score"], reverse=True)
+    top_matches = pairwise_matches[:top_n]
+    
+    avg_score = sum(m["score"] for m in top_matches) / len(top_matches) if top_matches else 0.0
+    
+    return {
+        "candidate_id": candidate.get("video_id"),
+        "title": candidate.get("title"),
+        "avg_top_score": avg_score,
+        "max_score": top_matches[0]["score"] if top_matches else 0.0,
+        "best_matches": top_matches
+    }
+    
+def group_playlist_by_topic(playlist_videos: list)->dict:
+    """Groups playlist videos based on simple keyword/tag heuristics.
+    Falls back to 'unknown' if no domain keywords are present.
+    """
+    topic_groups = {}
+    DOMAIN_KEYWORDS = {
+        "gaming": {"minecraft", "game", "gaming", "survival", "redstone", "crafting", "build"},
+        "music": {"lofi", "beats", "music", "chillhop", "mix", "instrumental", "focus"},
+        "programming": {"python", "programming", "code", "json", "data", "lists", "dictionaries"}
+    }
+    
+    for video in playlist_videos:
+        keywords = extract_keywords(video)
+        assigned_topic = "unknown"
+        max_overlap = 0
+        for domain, domain_words in DOMAIN_KEYWORDS.items():
+            overlap = len(keywords.intersection(domain_words))
+            if overlap > max_overlap:
+                max_overlap = overlap
+                assigned_topic = domain
+        topic_groups.setdefault(assigned_topic, []).append(video)
+        
+    return topic_groups
