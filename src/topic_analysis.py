@@ -1,4 +1,6 @@
 import re
+from collections import Counter
+from typing import List, Dict
 
 DEFAULT_STOP_WORDS = {
     "a", "an", "the", "and", "or", "but", "for", "from",
@@ -54,6 +56,59 @@ def score_candidate_pairwise(candidate: dict, playlist_videos: list, top_n: int 
         "max_score": top_matches[0]["score"] if top_matches else 0.0,
         "best_matches": top_matches
     }
+    
+def group_playlist_by_graph_jaccard(playlist_videos: List[Dict], similarity_threshold: float=0.08)->Dict[str, List]:
+    """Dynamically clusters playlist videos into topic groups using a graph based Jaccard similarity threshold
+    and connected components. Auto generates cluster labels based on the most frequent shared keywords."""
+    if not playlist_videos:
+        return {}
+    
+    # Extract keyword sets for every video
+    video_keywords={
+        v.get("video_id"): extract_keywords(v)
+        for v in playlist_videos
+    }
+    video_map = {v.get("video_id"): v for v in playlist_videos}
+    video_ids = list(video_map.keys())
+    
+    # Build adjacency list for connected components
+    adj_list = {v_id: set() for v_id in video_ids}
+    for i in range(len(video_ids)):
+        for j in range(i+1, len(video_ids)):
+            id1, id2 = video_ids[i], video_ids[j]
+            sim = jaccard_similarity(video_keywords[id1], video_keywords[id2])
+            if sim >= similarity_threshold:
+                adj_list[id1].add(id2)
+                adj_list[id2].add(id1)
+        
+    # Find connected components using BFS       
+    visited = set()
+    clusters = []
+    for v_id in video_ids:
+        if v_id not in visited:
+            component = []
+            queue = [v_id]
+            visited.add(v_id)
+            while queue:
+                curr = queue.pop(0)
+                component.append(video_map[curr])
+                for neighbor in adj_list[curr]:
+                    if neighbor not in visited:
+                        visited.add(neighbor)
+                        queue.append(neighbor)
+            clusters.append(component)
+
+    # Generate group labels from top cluster keywords     
+    topic_groups = {}
+    for idx, cluster_vids in enumerate(clusters):
+        word_counts = Counter()
+        for v in cluster_vids:
+            word_counts.update(video_keywords[v.get("video_id")])
+        
+        top_terms = [word for word, _ in word_counts.most_common(2)]
+        auto_label = "_".join(top_terms) if top_terms else f"topic_{idx+1}"
+        topic_groups[auto_label] = cluster_vids
+    return topic_groups
     
 def group_playlist_by_topic(playlist_videos: list)->dict:
     """Groups playlist videos based on simple keyword/tag heuristics.

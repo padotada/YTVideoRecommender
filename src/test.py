@@ -1,5 +1,5 @@
 from youtube_client import YouTubeClient
-from topic_analysis import group_playlist_by_topic
+from topic_analysis import group_playlist_by_graph_jaccard
 from candidate_retrieval import generate_topic_search_queries, filter_existing_playlist_videos
 from ranking import rank_candidates
 import pandas as pd
@@ -10,7 +10,7 @@ def run_recommendation_pipeline(playlist_url_or_id: str, api_key = None):
     playlist_videos = client.fetch_playlist_videos(playlist_url_or_id)
     print(f"Loaded {len(playlist_videos)} videos from playlist.")
     
-    grouped_playlist = group_playlist_by_topic(playlist_videos)
+    grouped_playlist = group_playlist_by_graph_jaccard(playlist_videos)
     search_queries_dict = generate_topic_search_queries(grouped_playlist)
     queries = [q for query_list in search_queries_dict.values() for q in query_list]
     
@@ -40,7 +40,8 @@ def get_recommendation_dataframe(recommendations):
     return pd.DataFrame(rows)
 if __name__ == '__main__':
     playlist_url = 'https://www.youtube.com/playlist?list=PLYSxFvzslwht7pWZ4KtBVwIZDmJ3x9aoU'
-    recommendations = run_recommendation_pipeline(playlist_url)
+    second_url = "https://www.youtube.com/watch?v=2xcFM9CBiOE&list=PLIdGxYqxOZEXyzTG_WXp9cujA3_xgp5Ps"
+    recommendations = run_recommendation_pipeline(second_url)
     df = get_recommendation_dataframe(recommendations)
     with pd.option_context('display.max_rows', None, 'display.max_columns', None):
         print(df)

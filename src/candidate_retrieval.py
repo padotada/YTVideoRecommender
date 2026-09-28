@@ -1,4 +1,4 @@
-from typing import List, Dict, Set
+from typing import List, Dict
 from topic_analysis import extract_keywords
 
 def filter_existing_playlist_videos(candidate_videos: List[Dict], playlist_videos: List[Dict])->List[Dict]:
