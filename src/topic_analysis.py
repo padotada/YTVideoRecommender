@@ -147,7 +147,18 @@ def group_playlist_by_tfidf(playlist_videos: List[Dict], distance_threshold: flo
     )
     labels = clustering.fit_predict(tfidf_matrix)
     
+    clusters = {}
+    for idx, label in enumerate(labels):
+        clusters.setdefault(label, []).append((playlist_videos[idx], tfidf_matrix[idx]))
     topic_groups = {}
+    for label, cluster_items in clusters.items():
+        vids = [item[0] for item in cluster_items]
+        vectors = np.array([item[1] for item in cluster_items])
+        mean_vector = vectors.mean(axis=0)
+        top_indices = mean_vector.argsort()[-2:][::-1]
+        top_words = feature_names[top_indices]
+        auto_label = '_'.join(top_words) if len(top_words) > 0 else f"cluster_{label}"
+        topic_groups[auto_label] = vids
     return topic_groups
 
 def group_playlist_by_topic(playlist_videos: list)->dict:

@@ -1,5 +1,5 @@
 from youtube_client import YouTubeClient
-from topic_analysis import group_playlist_by_graph_jaccard
+from topic_analysis import group_playlist_by_graph_jaccard, group_playlist_by_tfidf
 from candidate_retrieval import generate_topic_search_queries, filter_existing_playlist_videos
 from ranking import rank_candidates
 import pandas as pd
@@ -10,7 +10,7 @@ def run_recommendation_pipeline(playlist_url_or_id: str, api_key = None):
     playlist_videos = client.fetch_playlist_videos(playlist_url_or_id)
     print(f"Loaded {len(playlist_videos)} videos from playlist.")
     
-    grouped_playlist = group_playlist_by_graph_jaccard(playlist_videos)
+    grouped_playlist = group_playlist_by_tfidf(playlist_videos)
     search_queries_dict = generate_topic_search_queries(grouped_playlist)
     queries = [q for query_list in search_queries_dict.values() for q in query_list]
     
