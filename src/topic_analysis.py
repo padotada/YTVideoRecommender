@@ -1,6 +1,9 @@
 import re
 from collections import Counter
 from typing import List, Dict
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.cluster import AgglomerativeClustering
+import numpy as np
 
 DEFAULT_STOP_WORDS = {
     "a", "an", "the", "and", "or", "but", "for", "from",
@@ -110,6 +113,41 @@ def group_playlist_by_graph_jaccard(playlist_videos: List[Dict], similarity_thre
         topic_groups[auto_label] = cluster_vids
     return topic_groups
     
+def group_playlist_by_tfidf(playlist_videos: List[Dict], distance_threshold: float=0.7)->Dict[str, List[Dict]]:
+    """Clusters playlist videos using TF-IDF feature extraction and agglomerative cosine distance clustering."""
+    if not playlist_videos:
+        return {}
+    
+    # Prepare raw text corpus for each video
+    corpus = []
+    for v in playlist_videos:
+        title = v.get("title", "")
+        desc = v.get("description", "")
+        tags = " ".join(v.get("tags") or [])
+        full_text = f"{title} {desc} {tags}".strip()
+        corpus.append(full_text)
+        
+    if not any(corpus):
+        return {"all_videos": playlist_videos}
+        
+    # Extract TF-IDF matrix
+    vectorizer = TfidfVectorizer(stop_words='english', max_features=500)
+    tfidf_sparse = vectorizer.fit_transform(corpus)
+    tfidf_matrix = np.asarray(tfidf_sparse.todense())
+    feature_names = np.array(vectorizer.get_feature_names_out())
+    
+    # Perform agglomerative clustering with cosine distance
+    clustering = AgglomerativeClustering(
+        n_clusters=None,
+        metric='cosine',
+        linkage='average',
+        distance_threshold=distance_threshold
+    )
+    labels = clustering.fit_predict(tfidf_matrix)
+    
+    topic_groups = {}
+    return topic_groups
+
 def group_playlist_by_topic(playlist_videos: list)->dict:
     """Groups playlist videos based on simple keyword/tag heuristics.
     Falls back to 'unknown' if no domain keywords are present.
