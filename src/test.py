@@ -41,7 +41,7 @@ def get_recommendation_dataframe(recommendations):
 if __name__ == '__main__':
     playlist_url = 'https://www.youtube.com/playlist?list=PLYSxFvzslwht7pWZ4KtBVwIZDmJ3x9aoU'
     second_url = "https://www.youtube.com/watch?v=2xcFM9CBiOE&list=PLIdGxYqxOZEXyzTG_WXp9cujA3_xgp5Ps"
-    recommendations = run_recommendation_pipeline(second_url)
+    recommendations = run_recommendation_pipeline(playlist_url)
     df = get_recommendation_dataframe(recommendations)
     with pd.option_context('display.max_rows', None, 'display.max_columns', None):
         print(df)

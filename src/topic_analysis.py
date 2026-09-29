@@ -5,14 +5,16 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.cluster import AgglomerativeClustering
 import numpy as np
 
-DEFAULT_STOP_WORDS = {
-    "a", "an", "the", "and", "or", "but", "for", "from",
-    "in", "into", "of", "on", "to", "with", "by", "at",
-    "as", "is", "are", "be", "this", "that", "these",
-    "those", "your", "you", "my", "we", "it", "how", "what",
+YOUTUBE_STOP_WORDS = {
+    "a", "an", "the", "and", "or", "but", "for", "from", "in", "into", "of", "on", "to", 
+    "with", "by", "at", "as", "is", "are", "be", "this", "that", "these", "those", "your", 
+    "you", "my", "we", "it", "how", "what", "video", "videos", "channel", "subscribe", 
+    "sub", "subscribing", "like", "comment", "share", "watch", "official", "hd", "4k", 
+    "com", "https", "http", "www", "youtube", "link", "follow", "twitter", "instagram", 
+    "facebook", "discord", "patreon", "spotify", "music", "full", "part", "episode"
 }
 
-def extract_keywords(video: dict, stop_words: set = DEFAULT_STOP_WORDS)->set:
+def extract_keywords(video: dict, stop_words: set = YOUTUBE_STOP_WORDS)->set:
     """Extracts normalized, unique keywords from a video's title, description, and tags.
     Handles missing tags (null or empty) safely."""
     
@@ -21,9 +23,9 @@ def extract_keywords(video: dict, stop_words: set = DEFAULT_STOP_WORDS)->set:
     raw_tags = video.get("tags")
     tags_text = " ".join(raw_tags) if raw_tags and isinstance(raw_tags, list) else ""
     
-    text = f"{title} {description} {tags_text}"
+    text = f"{title} {title} {tags_text} {tags_text} {description}"
     words = re.findall(r"[a-z0-9]+", text.lower())
-    return {word for word in words if word not in stop_words}
+    return {word for word in words if word not in stop_words and len(word) > 2}
 
 def jaccard_similarity(set1, set2):
     """Calculates Jaccard similarity between two sets.
